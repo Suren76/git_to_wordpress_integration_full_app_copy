@@ -1,26 +1,31 @@
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { __ } from '@wordpress/i18n';
+import { decodeEntities } from '@wordpress/html-entities';
+import { STEPS } from '../steps/util';
 
 export const whiteLabelEnabled = () => {
-	return astraSitesVars.isWhiteLabeled ? true : false;
+	return astraSitesVars?.isWhiteLabeled ? true : false;
 };
 
 export const getWhileLabelName = () => {
-	return astraSitesVars.whiteLabelName;
+	return astraSitesVars?.whiteLabelName;
 };
 
 export const getWhiteLabelAuthorUrl = () => {
-	return astraSitesVars.whiteLabelUrl;
+	return astraSitesVars?.whiteLabelUrl;
 };
 
 export const isPro = () => {
-	return astraSitesVars.isPro;
+	return astraSitesVars?.isPro;
 };
 
 export const getProUrl = () => {
-	return astraSitesVars.getProURL;
+	return astraSitesVars?.getProURL;
 };
 
 export const sendPostMessage = ( data ) => {
+	// console.log( 'sendPostMessage' );
 	const frame = document.getElementById( 'astra-starter-templates-preview' );
 	if ( ! frame ) {
 		return;
@@ -53,10 +58,14 @@ export const getDataUri = ( url, callback ) => {
 };
 
 export const storeCurrentState = ( currentState ) => {
-	localStorage.setItem(
-		'starter-templates-onboarding',
-		JSON.stringify( currentState )
-	);
+	try {
+		localStorage.setItem(
+			'starter-templates-onboarding',
+			JSON.stringify( currentState )
+		);
+	} catch ( err ) {
+		return false;
+	}
 };
 
 export const getStoredState = () => {
@@ -71,13 +80,13 @@ export const getDefaultColorPalette = ( demo ) => {
 		if ( customizerData ) {
 			const globalPalette =
 				customizerData[ 'astra-settings' ][ 'global-color-palette' ]
-					.palette || [];
+					?.palette || [];
 
 			if ( globalPalette ) {
 				defaultPaletteValues = [
 					{
 						slug: 'default',
-						title: __( 'Default', 'astra-sites' ),
+						title: __( 'Original', 'astra-sites' ),
 						colors: globalPalette,
 					},
 				];
@@ -117,6 +126,31 @@ export const getDefaultTypography = ( demo ) => {
 	return defaultTypography;
 };
 
+export const getHeadingFonts = ( demo ) => {
+	const headingFonts = {};
+
+	const headingsTags = [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' ];
+
+	if ( demo && 'astra-site-customizer-data' in demo ) {
+		const customizerData = demo[ 'astra-site-customizer-data' ] || '';
+		if ( customizerData ) {
+			const customizerSettings = customizerData[ 'astra-settings' ] || [];
+
+			headingsTags.forEach( ( tag ) => {
+				headingFonts[ 'font-family-' + tag ] =
+					customizerSettings[ `font-family-${ tag }` ];
+				headingFonts[ 'font-weight-' + tag ] =
+					customizerSettings[ `font-weight-${ tag }` ];
+				headingFonts[ 'text-transform-' + tag ] =
+					customizerSettings[ `text-transform-${ tag }` ];
+				headingFonts[ 'line-height-' + tag ] =
+					customizerSettings[ `line-height-${ tag }` ];
+			} );
+		}
+	}
+	return headingFonts;
+};
+
 export const getColorScheme = ( demo ) => {
 	let colorScheme = 'light';
 
@@ -131,9 +165,119 @@ export const getColorScheme = ( demo ) => {
 };
 
 export const getAllSites = () => {
-	return astraSitesVars.all_sites;
+	return astraSitesVars?.all_sites;
 };
 
 export const getSupportLink = ( templateId, subject ) => {
 	return `${ starterTemplates.supportLink }&template-id=${ templateId }&subject=${ subject }`;
+};
+
+export const getGridItem = ( site ) => {
+	let imageUrl = site[ 'thumbnail-image-url' ] || '';
+	if ( '' === imageUrl && false === whiteLabelEnabled() ) {
+		if ( astraSitesVars?.default_page_builder === 'fse' ) {
+			imageUrl = `${ starterTemplates.imageDir }spectra-placeholder.png`;
+		} else {
+			imageUrl = `${ starterTemplates.imageDir }placeholder.png`;
+		}
+	}
+
+	return {
+		id: site.id,
+		image: imageUrl,
+		title: decodeEntities( site.title ),
+		badge:
+			'free' !== site[ 'astra-sites-type' ]
+				? __( 'Premium', 'astra-sites' )
+				: '',
+		...site,
+	};
+};
+
+export const getTotalTime = ( value ) => {
+	const hours = Math.floor( value / 60 / 60 );
+	const minutes = Math.floor( value / 60 ) - hours * 60;
+	const seconds = value % 60;
+
+	if ( minutes ) {
+		return minutes + '.' + seconds;
+	}
+
+	return '0.' + seconds;
+};
+
+export const saveGutenbergAsDefaultBuilder = ( pageBuilder = 'gutenberg' ) => {
+	const content = new FormData();
+	content.append( 'action', 'astra-sites-change-page-builder' );
+	content.append( '_ajax_nonce', astraSitesVars?._ajax_nonce );
+	content.append( 'page_builder', pageBuilder );
+
+	fetch( ajaxurl, {
+		method: 'post',
+		body: content,
+	} );
+};
+
+export const classNames = ( ...classes ) => twMerge( clsx( classes ) );
+
+/**
+ *
+ * @param {string} key
+ * @param {any}    value
+ * @return {any} value
+ */
+export const setLocalStorageItem = ( key, value ) => {
+	try {
+		if ( typeof window === 'undefined' ) {
+			return;
+		}
+		localStorage.setItem( key, JSON.stringify( value ) );
+	} catch ( error ) {
+		// Handle error (e.g., localStorage is full, etc.)
+	}
+};
+
+/**
+ * Get localStorage item
+ *
+ * @param {string} key
+ * @return {any} value
+ */
+export const removeLocalStorageItem = ( key ) => {
+	try {
+		if ( typeof window === 'undefined' ) {
+			return;
+		}
+		localStorage.removeItem( key );
+	} catch ( error ) {
+		console.error( 'Error while removing localStorage:', error );
+	}
+};
+
+export const debounce = ( func, wait, immediate ) => {
+	let timeout;
+	return ( ...args ) => {
+		const later = () => {
+			timeout = null;
+			if ( ! immediate ) {
+				func( ...args );
+			}
+		};
+		const callNow = immediate && ! timeout;
+		clearTimeout( timeout );
+		timeout = setTimeout( later, wait );
+		if ( callNow ) {
+			func( ...args );
+		}
+	};
+};
+
+/**
+ * Get step index from step name.
+ *
+ * @param {string} name
+ * @return {number} index
+ */
+export const getStepIndex = ( name = '' ) => {
+	return STEPS.findIndex( ( step ) => step.name === name );
 };

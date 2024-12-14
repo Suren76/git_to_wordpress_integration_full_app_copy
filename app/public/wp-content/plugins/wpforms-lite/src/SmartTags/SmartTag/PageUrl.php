@@ -22,8 +22,13 @@ class PageUrl extends SmartTag {
 	 */
 	public function get_value( $form_data, $fields = [], $entry_id = '' ) {
 
-		global $wp;
+		$page_url = $this->get_meta( $entry_id, 'page_url' );
 
-		return empty( $_POST['page_url'] ) ? home_url( add_query_arg( $_GET, $wp->request ) ) : esc_url_raw( wp_unslash( $_POST['page_url'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! empty( $page_url ) ) {
+			return esc_url( $page_url );
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification
+		return empty( $_POST['page_url'] ) ? esc_url( wpforms_current_url() ) : esc_url( esc_url_raw( wp_unslash( $_POST['page_url'] ) ) );
 	}
 }

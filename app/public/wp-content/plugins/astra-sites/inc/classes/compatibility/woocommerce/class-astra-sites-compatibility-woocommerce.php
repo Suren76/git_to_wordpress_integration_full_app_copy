@@ -46,12 +46,15 @@ if ( ! class_exists( 'Astra_Sites_Compatibility_WooCommerce' ) ) :
 		 */
 		public function __construct() {
 			add_action( 'astra_sites_import_start', array( $this, 'add_attributes' ), 10, 2 );
+			add_action( 'astra_sites_after_plugin_activation', array( $this, 'install_wc' ), 10, 2 );
 
 			// WooCommerce product attributes registration.
 			if ( class_exists( 'WooCommerce' ) ) {
 				add_filter( 'wxr_importer.pre_process.term', array( $this, 'woocommerce_product_attributes_registration' ), 10, 1 );
 				add_action( 'astra_sites_import_complete', array( $this, 'update_wc_lookup_table' ) );
 			}
+			add_filter( 'astra_sites_pre_process_post_disable_content', '__return_false' );
+			add_filter( 'astra_sites_pre_process_post_empty_excerpt', '__return_false' );
 		}
 
 		/**
@@ -78,6 +81,28 @@ if ( ! class_exists( 'Astra_Sites_Compatibility_WooCommerce' ) ) :
 
 					$id = wc_create_attribute( $args );
 				}
+			}
+		}
+
+		/**
+		 * Create default WooCommerce tables
+		 *
+		 * @param string $plugin_init Plugin file which is activated.
+		 * @return void
+		 */
+		public function install_wc( $plugin_init ) {
+			if ( 'woocommerce/woocommerce.php' !== $plugin_init ) {
+				return;
+			}
+
+			// Create WooCommerce database tables.
+			if ( is_callable( '\Automattic\WooCommerce\Admin\Install::create_tables' ) ) {
+				\Automattic\WooCommerce\Admin\Install::create_tables();
+				\Automattic\WooCommerce\Admin\Install::create_events();
+			}
+
+			if ( is_callable( 'WC_Install::install' ) ) {
+				WC_Install::install();
 			}
 		}
 
@@ -112,7 +137,7 @@ if ( ! class_exists( 'Astra_Sites_Compatibility_WooCommerce' ) ) :
 							'attribute_orderby' => 'menu_order',
 							'attribute_public'  => 0,
 						);
-						$wpdb->insert( $wpdb->prefix . 'woocommerce_attribute_taxonomies', $attribute );
+						$wpdb->insert( $wpdb->prefix . 'woocommerce_attribute_taxonomies', $attribute ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- WP Query would be expensive here, we are adding taxonomy attributes for WooCommerce.
 						delete_transient( 'wc_attribute_taxonomies' );
 					}
 

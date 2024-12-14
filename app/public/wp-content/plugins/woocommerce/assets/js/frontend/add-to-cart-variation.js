@@ -22,10 +22,11 @@
 		self.$form.off( '.wc-variation-form' );
 
 		// Methods.
-		self.getChosenAttributes    = self.getChosenAttributes.bind( self );
-		self.findMatchingVariations = self.findMatchingVariations.bind( self );
-		self.isMatch                = self.isMatch.bind( self );
-		self.toggleResetLink        = self.toggleResetLink.bind( self );
+		self.getChosenAttributes         = self.getChosenAttributes.bind( self );
+		self.findMatchingVariations      = self.findMatchingVariations.bind( self );
+		self.isMatch                     = self.isMatch.bind( self );
+		self.toggleResetLink             = self.toggleResetLink.bind( self );
+		self.showNoMatchingVariationsMsg = self.showNoMatchingVariationsMsg.bind( self );
 
 		// Events.
 		$form.on( 'click.wc-variation-form', '.reset_variations', { variationForm: self }, self.onReset );
@@ -185,14 +186,7 @@
 							attributes.chosenCount = 0;
 
 							if ( ! form.loading ) {
-								form.$form
-									.find( '.single_variation' )
-									.after(
-										'<p class="wc-no-matching-variations woocommerce-info">' +
-										wc_add_to_cart_variation_params.i18n_no_matching_variations_text +
-										'</p>'
-									);
-								form.$form.find( '.wc-no-matching-variations' ).slideDown( 200 );
+								form.showNoMatchingVariationsMsg();
 							}
 						}
 					},
@@ -213,14 +207,7 @@
 					attributes.chosenCount = 0;
 
 					if ( ! form.loading ) {
-						form.$form
-							.find( '.single_variation' )
-							.after(
-								'<p class="wc-no-matching-variations woocommerce-info">' +
-								wc_add_to_cart_variation_params.i18n_no_matching_variations_text +
-								'</p>'
-							);
-						form.$form.find( '.wc-no-matching-variations' ).slideDown( 200 );
+						form.showNoMatchingVariationsMsg();
 					}
 				}
 			}
@@ -245,7 +232,8 @@
 			$dimensions    = form.$product.find(
 				'.product_dimensions, .woocommerce-product-attributes-item--dimensions .woocommerce-product-attributes-item__value'
 			),
-			$qty           = form.$singleVariationWrap.find( '.quantity' ),
+			$qty_input     = form.$singleVariationWrap.find( '.quantity input.qty[name="quantity"]' ),
+			$qty           = $qty_input.closest( '.quantity' ),
 			purchasable    = true,
 			variation_id   = '',
 			template       = false,
@@ -290,12 +278,11 @@
 
 		// Hide or show qty input
 		if ( variation.is_sold_individually === 'yes' ) {
-			$qty.find( 'input.qty' ).val( '1' ).attr( 'min', '1' ).attr( 'max', '' ).trigger( 'change' );
+			$qty_input.val( '1' ).attr( 'min', '1' ).attr( 'max', '' ).trigger( 'change' );
 			$qty.hide();
 		} else {
 
-			var $qty_input = $qty.find( 'input.qty' ),
-				qty_val    = parseFloat( $qty_input.val() );
+			var qty_val    = parseFloat( $qty_input.val() );
 
 			if ( isNaN( qty_val ) ) {
 				qty_val = variation.min_qty;
@@ -328,7 +315,7 @@
 		var form = event.data.variationForm;
 
 		form.$form.find( 'input[name="variation_id"], input.variation_id' ).val( '' ).trigger( 'change' );
-		form.$form.find( '.wc-no-matching-variations' ).remove();
+		form.$form.find( '.wc-no-matching-variations' ).parent().remove();
 
 		if ( form.useAjax ) {
 			form.$form.trigger( 'check_variations' );
@@ -570,6 +557,24 @@
 	};
 
 	/**
+	 * Show no matching variation message.
+	 */
+	VariationForm.prototype.showNoMatchingVariationsMsg = function() {
+		this.$form
+			.find( '.single_variation' )
+			.after(
+				'<div role="alert">' +
+					'<p class="wc-no-matching-variations woocommerce-info">' +
+						wc_add_to_cart_variation_params.i18n_no_matching_variations_text +
+					'</p>' +
+				'</div>'
+			)
+			.next( 'div' )
+			.find( '.wc-no-matching-variations' )
+			.slideDown( 200 );
+	};
+
+	/**
 	 * Function to call wc_variation_form on jquery selector.
 	 */
 	$.fn.wc_variation_form = function() {
@@ -668,7 +673,7 @@
 			var slideToImage = $gallery_nav.find( 'li img[src="' + variation.image.gallery_thumbnail_src + '"]' );
 
 			if ( slideToImage.length > 0 ) {
-				slideToImage.trigger( 'click' );
+				slideToImage.trigger( 'flexslider-click' );
 				$form.attr( 'current-image', variation.image_id );
 				window.setTimeout( function() {
 					$( window ).trigger( 'resize' );

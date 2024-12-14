@@ -1,7 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CategoryList } from '@brainstormforce/starter-templates-components';
 import { __ } from '@wordpress/i18n';
-
-import { CategoryList } from '@brainstormforce/starter-templates';
+import { setURLParmsValue } from '../../../utils/url-params';
 import { useStateValue } from '../../../store/store';
 
 const SiteCategory = () => {
@@ -57,21 +58,16 @@ const SiteCategory = () => {
 		},
 		{
 			id: '6',
-			name: __( 'Local', 'astra-sites' ),
-			slug: 'Local',
+			name: __( 'Local Business', 'astra-sites' ),
+			slug: 'Local Business',
 		},
 		{
 			id: '7',
-			name: __( 'Business', 'astra-sites' ),
-			slug: 'Business',
-		},
-		{
-			id: '8',
 			name: __( 'Professional', 'astra-sites' ),
 			slug: 'Professional',
 		},
 	];
-
+	const history = useNavigate();
 	return (
 		<div className="st-category-filter">
 			<CategoryList
@@ -86,6 +82,12 @@ const SiteCategory = () => {
 							category.name !== 'All' ? category.name : '',
 						onMyFavorite: false,
 					} );
+					const urlParam = setURLParmsValue(
+						's',
+						category.name !== 'All' ? category.name : ''
+					);
+					history( `?${ urlParam }` );
+					document.querySelector( '.stc-search-input' ).focus();
 				} }
 			/>
 		</div>

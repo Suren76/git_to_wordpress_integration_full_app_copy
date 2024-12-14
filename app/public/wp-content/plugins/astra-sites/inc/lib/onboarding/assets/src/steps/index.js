@@ -1,17 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+// import { Tooltip } from '@brainstormforce/starter-templates-components';
+import Tooltip from '../components/tooltip/tooltip';
 import { __ } from '@wordpress/i18n';
-import { Tooltip } from '@brainstormforce/starter-templates';
 import { useStateValue } from '../store/store';
 import ICONS from '../../icons';
 import Logo from '../components/logo';
-import { storeCurrentState } from '../utils/functions';
+import { getStepIndex, storeCurrentState } from '../utils/functions';
 import { STEPS } from './util';
+const { adminUrl } = starterTemplates;
+const $ = jQuery;
+
+const pageBuilders = [ 'gutenberg', 'elementor', 'beaver-builder' ];
 
 const Steps = () => {
 	const [ stateValue, dispatch ] = useStateValue();
 	const {
+		builder,
+		searchTerms,
+		searchTermsWithCount,
 		currentIndex,
+		currentCustomizeIndex,
 		templateResponse,
 		designStep,
 		importError,
@@ -19,7 +28,32 @@ const Steps = () => {
 	const [ settingHistory, setSettinghistory ] = useState( true );
 	const [ settingIndex, setSettingIndex ] = useState( true );
 	const current = STEPS[ currentIndex ];
-	const history = useHistory();
+	const history = useNavigate();
+
+	useEffect( () => {
+		$( document ).on( 'heartbeat-send', sendHeartbeat );
+		$( document ).on( 'heartbeat-tick', heartbeatDone );
+	}, [ searchTerms, searchTermsWithCount ] );
+
+	const heartbeatDone = ( event, data ) => {
+		// Check for our data, and use it.
+		if ( ! data[ 'ast-sites-search-terms' ] ) {
+			return;
+		}
+		dispatch( {
+			type: 'set',
+			searchTerms: [],
+			searchTermsWithCount: [],
+		} );
+	};
+
+	const sendHeartbeat = ( event, data ) => {
+		// Add additional data to Heartbeat data.
+		if ( searchTerms.length > 0 ) {
+			data[ 'ast-sites-search-terms' ] = searchTermsWithCount;
+			data[ 'ast-sites-builder' ] = builder;
+		}
+	};
 
 	useEffect( () => {
 		const previousIndex = parseInt( currentIndex ) - 1;
@@ -49,18 +83,21 @@ const Steps = () => {
 		const storedStateValue = JSON.parse(
 			localStorage.getItem( 'starter-templates-onboarding' )
 		);
-		const urlIndex =
-			parseInt( currentUrlParams.get( 'currentIndex' ) ) || 0;
+		const urlIndex = parseInt( currentUrlParams.get( 'ci' ) ) || 0;
 		const designIndex =
 			parseInt( currentUrlParams.get( 'designStep' ) ) || 0;
+		const searchTerm = currentUrlParams.get( 's' ) || '';
 
 		if ( urlIndex !== 0 ) {
 			const stateValueUpdates = {};
 			for ( const key in storedStateValue ) {
-				if ( key === 'currentIndex' ) {
+				if ( key === 'currentIndex' || key === 'siteSearchTerm' ) {
 					continue;
 				}
 
+				if ( key === 'builder' ) {
+					continue;
+				}
 				stateValueUpdates[ key ] = storedStateValue[ `${ key }` ];
 			}
 
@@ -68,6 +105,7 @@ const Steps = () => {
 				type: 'set',
 				currentIndex: urlIndex,
 				designStep: designIndex,
+				siteSearchTerm: searchTerm,
 				...stateValueUpdates,
 			} );
 		} else {
@@ -79,23 +117,33 @@ const Steps = () => {
 
 	useEffect( () => {
 		const currentUrlParams = new URLSearchParams( window.location.search );
-		const urlIndex =
-			parseInt( currentUrlParams.get( 'currentIndex' ) ) || 0;
+		const urlIndex = parseInt( currentUrlParams.get( 'ci' ) ) || 0;
+		const builderValue = currentUrlParams.get( 'builder' ) || '';
 
-		if ( currentIndex === 0 ) {
-			currentUrlParams.delete( 'currentIndex' );
-			history.push(
+		if ( currentIndex === getStepIndex( 'page-builder' ) ) {
+			currentUrlParams.delete( 'ci' );
+			currentUrlParams.delete( 'ai' );
+			currentUrlParams.delete( 'builder' );
+			if ( builderValue && pageBuilders.includes( builderValue ) ) {
+				dispatch( {
+					type: 'set',
+					builder: builderValue,
+					currentIndex: 2,
+				} );
+			}
+			history(
 				window.location.pathname + '?' + currentUrlParams.toString()
 			);
 		}
 
 		if (
-			( currentIndex !== 0 && urlIndex !== currentIndex ) ||
+			( currentIndex !== getStepIndex( 'page-builder' ) &&
+				urlIndex !== currentIndex ) ||
 			templateResponse !== null
 		) {
 			storeCurrentState( stateValue );
-			currentUrlParams.set( 'currentIndex', currentIndex );
-			history.push(
+			currentUrlParams.set( 'ci', currentIndex );
+			history(
 				window.location.pathname + '?' + currentUrlParams.toString()
 			);
 		}
@@ -108,12 +156,12 @@ const Steps = () => {
 		) {
 			storeCurrentState( stateValue );
 			currentUrlParams.set( 'designStep', designStep );
-			history.push(
+			history(
 				window.location.pathname + '?' + currentUrlParams.toString()
 			);
 		}
 
-		if ( currentIndex === 2 ) {
+		if ( currentIndex === getStepIndex( 'site-list' ) ) {
 			dispatch( {
 				type: 'set',
 				activePalette: {},
@@ -126,17 +174,37 @@ const Steps = () => {
 		setSettingIndex( false );
 	}, [ currentIndex, templateResponse, designStep ] );
 
-	const goToShowcase = () => {
-		dispatch( {
-			type: 'set',
-			currentIndex: currentIndex - 2,
-			currentCustomizeIndex: 0,
-		} );
+	window.onpopstate = () => {
+		if (
+			!! designStep &&
+			designStep !== 1 &&
+			currentIndex !== getStepIndex( 'site-list' )
+		) {
+			if ( currentIndex >= getStepIndex( 'survey' ) ) {
+				dispatch( {
+					type: 'set',
+					currentIndex: currentIndex - 1,
+				} );
+			} else {
+				dispatch( {
+					type: 'set',
+					designStep: designStep - 1,
+					currentCustomizeIndex: currentCustomizeIndex - 1,
+					currentIndex,
+				} );
+			}
+		}
+		if ( currentIndex > getStepIndex( 'site-list' ) && designStep === 1 ) {
+			dispatch( {
+				type: 'set',
+				currentIndex: currentIndex - 1,
+			} );
+		}
 	};
 
 	return (
-		<div className={ `step ${ current.class }` }>
-			{ currentIndex !== 3 && (
+		<div className={ `st-step ${ current.class }` }>
+			{ ! [ getStepIndex( 'customizer' ) ].includes( currentIndex ) && (
 				<div className="step-header">
 					{ current.header ? (
 						current.header
@@ -146,30 +214,15 @@ const Steps = () => {
 								<Logo />
 							</div>
 							<div className="right-col">
-								{ currentIndex === 4 && (
-									<div
-										className="back-to-main"
-										onClick={ goToShowcase }
-									>
-										<Tooltip
-											content={ __(
-												'Back to Templates',
-												'astra-sites'
-											) }
-										>
-											{ ICONS.cross }
-										</Tooltip>
-									</div>
-								) }
 								<div className="col exit-link">
-									<a href={ starterTemplates.adminUrl }>
+									<a href={ adminUrl }>
 										<Tooltip
 											content={ __(
 												'Exit to Dashboard',
 												'astra-sites'
 											) }
 										>
-											{ ICONS.dashboard }
+											{ ICONS.remove }
 										</Tooltip>
 									</a>
 								</div>

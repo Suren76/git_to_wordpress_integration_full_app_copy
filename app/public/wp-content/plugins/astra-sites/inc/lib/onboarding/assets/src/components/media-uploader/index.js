@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { RangeControl } from '@wordpress/components';
@@ -9,15 +9,11 @@ import { sendPostMessage, getDataUri } from '../../utils/functions';
 import { initialState } from '../../store/reducer';
 
 import './style.scss';
-import PreviousStepLink from '../../components/util/previous-step-link/index';
 import ICONS from '../../../icons';
 
 const MediaUploader = () => {
 	const replaceMediaUpload = () => MediaUpload;
-	const [
-		{ siteLogo, builder, currentCustomizeIndex, currentIndex },
-		dispatch,
-	] = useStateValue();
+	const [ { siteLogo }, dispatch ] = useStateValue();
 
 	addFilter(
 		'editor.MediaUpload',
@@ -75,28 +71,6 @@ const MediaUploader = () => {
 		} );
 	};
 
-	const nextStep = () => {
-		if ( builder === 'beaver-builder' || builder === 'brizy' ) {
-			dispatch( {
-				type: 'set',
-				currentCustomizeIndex: currentCustomizeIndex + 2,
-			} );
-		} else {
-			dispatch( {
-				type: 'set',
-				currentCustomizeIndex: currentCustomizeIndex + 1,
-			} );
-		}
-	};
-
-	const lastStep = () => {
-		dispatch( {
-			type: 'set',
-			currentIndex: currentIndex - 1,
-			currentCustomizeIndex: 0,
-		} );
-	};
-
 	const resetLogoWidth = ( event ) => {
 		if ( ! siteLogo.url ) {
 			return;
@@ -104,6 +78,27 @@ const MediaUploader = () => {
 		event.stopPropagation();
 		onWidthChange( initialState.siteLogo.width );
 	};
+
+	useEffect( () => {
+		if ( !! astraSitesVars?.isRTLEnabled ) {
+			const rangeControl = document.querySelector(
+				'.components-range-control__wrapper'
+			);
+			if ( rangeControl === null ) {
+				return;
+			}
+
+			// Range control slider styling for RTL.
+			const currentValue = rangeControl.children[ 3 ].style.left;
+			rangeControl.children[ 3 ].style.marginRight = '-10px';
+			rangeControl.children[ 3 ].style.removeProperty( 'margin-left' );
+			rangeControl.children[ 3 ].style.right = currentValue;
+			rangeControl.children[ 4 ].style.removeProperty( 'transform' );
+			rangeControl.children[ 4 ].style.removeProperty( 'left' );
+			rangeControl.children[ 4 ].style.right = currentValue;
+			rangeControl.children[ 4 ].style.transform = 'translateX(50%)';
+		}
+	} );
 
 	return (
 		<MediaUpload
@@ -160,7 +155,7 @@ const MediaUploader = () => {
 					{ '' === siteLogo.url ? (
 						<div>
 							<Button
-								className="ist-button ist-button-outline"
+								className="ist-button ist-button-outline ist-logo-button"
 								onClick={ open }
 							>
 								<h5>
@@ -181,7 +176,7 @@ const MediaUploader = () => {
 						<div className="logo-skip-info">
 							<h5>
 								{ __(
-									"Don't have Logo? No Problem!",
+									'Don’t have a logo? No problem!',
 									'astra-sites'
 								) }
 							</h5>
@@ -195,7 +190,7 @@ const MediaUploader = () => {
 					) }
 					<div className="astra-sites-ai-logo-wrap">
 						<div className="label">
-							{ __( 'Logo Width', 'astra-sitess' ) }
+							{ __( 'Logo Width', 'astra-sites' ) }
 						</div>
 						<div
 							className={ `control-reset ${
@@ -221,15 +216,6 @@ const MediaUploader = () => {
 							disabled={ '' !== siteLogo.url ? false : true }
 						/>
 					</div>
-					<Button className="ist-button" onClick={ nextStep } after>
-						{ '' !== siteLogo.url
-							? __( 'Continue', 'astra-sites' )
-							: __( 'Skip & Continue', 'astra-sites' ) }
-					</Button>
-
-					<PreviousStepLink onClick={ lastStep }>
-						{ __( 'Back', 'astra-sites' ) }
-					</PreviousStepLink>
 				</>
 			) }
 		/>

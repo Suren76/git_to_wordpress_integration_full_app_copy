@@ -1,34 +1,15 @@
-import LicenseValidation from './license-validation';
-import LicenseValidationControls from './license-validation/controls';
-import BusinessLogo from './business-logo';
-import BusinessLogoControls from './business-logo/controls';
-import SiteColors from './site-colors';
-import SiteColorsControls from './site-colors/controls';
-import SiteTypography from './site-typography';
-import SiteTypographyControls from './site-typography/controls';
+import EcommerceSelections from './ecommerce-selections';
+import EcommerceSelectionsControls from './ecommerce-selections/controls';
+import ClassicPreview from '../classic-preview';
 
 export const CustomizeSteps = [
 	{
-		content: BusinessLogo,
-		controls: BusinessLogoControls,
+		content: EcommerceSelections,
+		controls: EcommerceSelectionsControls,
+		class: 'customize-ecommerce-selections',
+	},
+	{
+		content: ClassicPreview,
 		class: 'customize-business-logo',
-	},
-	{
-		content: SiteColors,
-		controls: SiteColorsControls,
-		actions: null,
-		class: 'customize-site-colors',
-	},
-	{
-		content: SiteTypography,
-		controls: SiteTypographyControls,
-		actions: null,
-		class: 'customize-site-typography',
-	},
-	{
-		content: LicenseValidation,
-		controls: LicenseValidationControls,
-		actions: null,
-		class: 'customize-license-validation',
 	},
 ];
